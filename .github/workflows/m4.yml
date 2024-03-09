@@ -29,7 +29,7 @@ jobs:
           
     - name: Repo Sync
       run: |
-        repo sync -j$(nproc --all) 
+        repo sync 
       working-directory: workspace
 
     - name: Set Swap Space
@@ -40,7 +40,7 @@ jobs:
       run: |
         export ALLOW_MISSING_DEPENDENCIES=true
         .build/envsetup.sh
-        lunch twrp_mi439-eng && make clean && make recoveryimage -j$(nproc --all)
+        lunch twrp_mi439-eng && make clean && make recoveryimage
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
       with:
