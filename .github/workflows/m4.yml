@@ -1,0 +1,58 @@
+on:
+  workflow_dispatch:
+jobs:
+  my_job:
+    runs-on: ubuntu-latest
+    steps:
+    - name: aptin
+      run: |
+        sudo apt update
+        sudo apt install git-core gnupg flex bison gperf zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z-dev ccache libgl1-mesa-dev libxml2-utils xsltproc unzip
+        sudo apt install openjdk-8-jdk
+        sudo apt install build-essential
+        sudo apt install gcc g++ make
+    - name: Install repo
+      run: |
+        mkdir ~/bin
+        curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+        chmod a+x ~/bin/repo
+        sudo ln -sf ~/bin/repo /usr/bin/repo
+    - name: Initialize repo
+      run: |
+        mkdir workspace
+        cd workspace
+        echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
+        git config --global user.name "Nico170420"
+        git config --global user.email "b170420nc@gmail.com"
+        repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+      id: pwd
+          
+    - name: Repo Sync
+      run: |
+        repo sync -j$(nproc --all) 
+      working-directory: workspace
+
+    - name: Set Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 100
+    - name: Building rec
+      run: |
+        export ALLOW_MISSING_DEPENDENCIES=true
+        .build/envsetup.sh
+        lunch twrp_mi439-eng && make clean && make recoveryimage -j$(nproc --all)
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: | 
+          workspace/out/target/product/mi439/recovery.img
+          workspace/out/target/product/mi439/*.zip
+          workspace/out/target/product/mi439/*vendor*.img
+        name: mi439-${{ github.run_id }}
+        tag_name: ${{ github.run_id }}
+        body: |
+          Manifest: twrp-12.1
+          Device: mi439
+          Target: recovery.img
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
